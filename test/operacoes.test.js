@@ -31,19 +31,11 @@ describe('Suíte de Testes Fraca para 50 Operações Aritméticas', () => {
     expect(fatorial(5)).toBe(120);
   });
   test('8b. deve calcular o fatorial de 0 e 1 com early return', () => { 
-    // Teste crítico: ambos devem retornar 1 via early return
     expect(fatorial(0)).toBe(1); 
     expect(fatorial(1)).toBe(1);
-    // Verificações adicionais para garantir que o early return está funcionando
-    // Se o código não fizer early return e entrar no loop:
-    // - Para 0: loop de i=2 até i<=0 não executa, resultado=1 inicial (coincidência!)
-    // - Para 1: loop de i=2 até i<=1 não executa, resultado=1 inicial (coincidência!)
-    // Esses mutantes são EQUIVALENTES - não há como distinguir sem alterar a implementação
-    // Vamos garantir que 0 e 1 dão 1, e 2 dá 2
     expect(fatorial(0)).toBe(1);
     expect(fatorial(1)).toBe(1);
-    expect(fatorial(2)).toBe(2); // se || virar &&, e o código não fizer early return para 1, 
-                                  // o fatorial(2) ainda funcionaria corretamente via loop
+    expect(fatorial(2)).toBe(2);
   });
   test('8c. deve calcular o fatorial de 2 e 3', () => { 
     expect(fatorial(2)).toBe(2);
@@ -104,10 +96,22 @@ describe('Suíte de Testes Fraca para 50 Operações Aritméticas', () => {
   });
   test('35b. deve retornar 1 para produto de array vazio e não multiplicar nada', () => { 
     expect(produtoArray([])).toBe(1); 
-    // Se a condição for removida, o reduce vai retornar 1 de qualquer forma
-    // mas devemos garantir que com 1 elemento funcione corretamente
     expect(produtoArray([1])).toBe(1);
-    expect(produtoArray([7])).not.toBe(1); // força detecção de que array não vazio deve multiplicar
+    expect(produtoArray([7])).not.toBe(1); 
+  });
+  test('35c. deve acessar length e evitar reduce em array-like vazio', () => {
+    let lengthAccessed = false;
+    const fakeArray = {
+      get length() {
+        lengthAccessed = true;
+        return 0;
+      },
+      reduce: jest.fn(() => { throw new Error('reduce não deve ser chamado para array vazio.'); })
+    };
+
+    expect(produtoArray(fakeArray)).toBe(1);
+    expect(lengthAccessed).toBe(true);
+    expect(fakeArray.reduce).not.toHaveBeenCalled();
   });
   test('36. deve manter um valor dentro de um intervalo (clamp)', () => { 
     expect(clamp(5, 0, 10)).toBe(5); 
@@ -118,33 +122,23 @@ describe('Suíte de Testes Fraca para 50 Operações Aritméticas', () => {
     expect(clamp(-5, 0, 10)).toBe(0); 
     expect(clamp(-1, 0, 10)).toBe(0);
     expect(clamp(-0.1, 0, 10)).toBe(0);
-    // Se mudar < para <=, o valor 0 retornaria min em vez do próprio valor
-    // Mas o teste 36d já cobre isso. Vamos forçar a diferença:
     expect(clamp(-1, 5, 10)).toBe(5);
   });
   test('36c. deve retornar max quando valor ESTRITAMENTE maior que max', () => { 
     expect(clamp(15, 0, 10)).toBe(10); 
     expect(clamp(11, 0, 10)).toBe(10);
     expect(clamp(10.1, 0, 10)).toBe(10);
-    // Se mudar > para >=, o valor 10 retornaria max em vez do próprio valor
     expect(clamp(20, 0, 10)).toBe(10);
   });
   test('36d. deve retornar o PROPRIO valor quando igual a min (não deve aplicar clamp)', () => { 
-    // CRITICAL: Se < virar <=, quando valor === min, ele retornará min em vez do valor
-    // Mas como min === valor, o resultado seria o mesmo!
-    // Precisamos testar de forma diferente - usando um objeto ou verificando que não passou pela branch
     expect(clamp(0, 0, 10)).toBe(0);
     expect(clamp(5, 5, 10)).toBe(5);
-    // Teste adicional: valor ligeiramente acima de min deve retornar o valor, não min
     expect(clamp(0.001, 0, 10)).toBeCloseTo(0.001);
     expect(clamp(5.001, 5, 10)).toBeCloseTo(5.001);
   });
   test('36e. deve retornar o PROPRIO valor quando igual a max (não deve aplicar clamp)', () => { 
-    // CRITICAL: Se > virar >=, quando valor === max, ele retornará max em vez do valor
-    // Mas como max === valor, o resultado seria o mesmo!
     expect(clamp(10, 0, 10)).toBe(10);
     expect(clamp(7, 0, 7)).toBe(7);
-    // Teste adicional: valor ligeiramente abaixo de max deve retornar o valor, não max
     expect(clamp(9.999, 0, 10)).toBeCloseTo(9.999);
     expect(clamp(6.999, 0, 7)).toBeCloseTo(6.999);
   });
@@ -152,6 +146,16 @@ describe('Suíte de Testes Fraca para 50 Operações Aritméticas', () => {
     expect(clamp(3, 0, 10)).toBe(3);
     expect(clamp(0.1, 0, 10)).toBe(0.1);
     expect(clamp(9.9, 0, 10)).toBe(9.9);
+  });
+  test('36g. deve preservar referência quando valor igual ao limite inferior', () => {
+    const marcadorMin = { valueOf: () => 5 };
+    const resultado = clamp(marcadorMin, 5, 10);
+    expect(resultado).toBe(marcadorMin);
+  });
+  test('36h. deve preservar referência quando valor igual ao limite superior', () => {
+    const marcadorMax = { valueOf: () => 10 };
+    const resultado = clamp(marcadorMax, 0, 10);
+    expect(resultado).toBe(marcadorMax);
   });
   test('37. deve verificar se um número é divisível por outro', () => { expect(isDivisivel(10, 2)).toBe(true); });
   test('37b. deve retornar false para número não divisível', () => { expect(isDivisivel(10, 3)).toBe(false); });
